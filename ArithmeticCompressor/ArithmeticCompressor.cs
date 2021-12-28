@@ -80,7 +80,7 @@ SLOWER
  * DONE: 15. Clean comments, fix example code
  * 16. Add a order 1 (and maybe 2?) model to demonstrate
  * 17. Review "Arithmetic Coding revealed, A guided tour from theory to praxis", Bodden, Clasen, Kneis, 2007, http://www.sable.mcgill.ca/~ebodde/pubs/sable-tr-2007-5.pdf
- * */
+  * */
 
 namespace Lomont.Compression.Arithmetic;
 
@@ -90,20 +90,20 @@ namespace Lomont.Compression.Arithmetic;
 public class Compressor
 {
 	#region Simple Interface
-	/// <summary>
-	/// Compress a byte sequence into a compressed byte list
-	/// Provides simple in memory compression
-	/// </summary>
-	/// <param name="data">The byte data to compress</param>
-	/// <returns>The compressed byte array</returns>
-	public static List<byte> CompressBytes(IEnumerable<byte> data)
-	{
-		var compressor = new Compressor();
-		foreach (byte b in data)
-			compressor.CompressSymbol(b);
-		return (compressor.CompressFinish() is BitWriter m) ? m.Data : new();
-	}
-	#endregion
+    /// <summary>
+    /// Compress a byte sequence into a compressed byte list
+    /// Provides simple in memory compression
+    /// </summary>
+    /// <param name="data">The byte data to compress</param>
+    /// <returns>The compressed byte array</returns>
+    public static List<byte> CompressBytes(IEnumerable<byte> data)
+    {
+        var compressor = new Compressor();
+        foreach (byte b in data)
+            compressor.CompressSymbol(b);
+        return (compressor.CompressFinish() is BitWriter m) ? m.Data : new List<byte>();
+    }
+    #endregion
 
 	#region Interface
 
@@ -236,6 +236,7 @@ public class Compressor
 
 		// write enough bits to finalize the location of the interval
 		// interval always holds at least 1/4 of the range, so cases:
+		Trace.Assert(rangeHigh - rangeLow >= QuarterRange);
 		if (rangeLow < QuarterRange) // low < quarter < half <= high
 		{
 			writer.Write(0); // low end of the range
@@ -245,7 +246,8 @@ public class Compressor
 		else // low < half < quarter3 <= high
 		{
 			writer.Write(1); // low end of range, decoder adds 0s automatically on decode
-			writer.Write(0); // we'll write this just in case decoder doesn't add 0's properly..
+			for (int i = 0; i < underflow + 1; ++i) // need a 1 and then overflow bits
+				writer.Write(0);
 		}
 		writer.Flush();
 	}
