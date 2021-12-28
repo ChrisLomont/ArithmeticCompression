@@ -45,15 +45,18 @@ long compressionElapsedMs = 0, decompressionElapsedMs = 0;
 //var testPath = @"..\..\..\..\..\"; // medium test
 //var testPath = @"..\"; // small test
 var testPath = $".";
+// ran large test, obtained
+// File _______ (86%) match True, success 455375, errors 0, except 10, com,dec kB/s 10794:7480, total bytes 93550761546, total ratio 75%
 
 // last file with an exception in case want to explore
-string lastExceptionFile = string.Empty;
+string lastExceptionFile = string.Empty, lastMismatchFile = String.Empty;
 
 // run all files
 Recurse(testPath);
 
 // last error
 Console.WriteLine($"Last exception file {lastExceptionFile}");
+Console.WriteLine($"Last mismatch file {lastMismatchFile}");
 
 return; // and done
 
@@ -95,9 +98,14 @@ void TestFile(string filename)
     var decompressedKbs = decompressionElapsedMs == 0 ? 0 : (1000L * totalBytes) / ((1L << 10) * decompressionElapsedMs);
 
     var matches = Check(decompressedBytes,originalBytes);
-    if (matches) successes++; else errors++;
+    if (matches) successes++; 
+    else 
+    {
+        errors++;
+        lastMismatchFile = filename;
+    }
 
-    Console.WriteLine($" ({Pct(compressedLength,originalLength)}) match {matches}, success {successes}, errors {errors}, except {exceptions}, com,dec kB/s {compressedKbs}:{decompressedKbs}, total ratio {Pct(totalCompressedBytes,totalBytes)}");
+    Console.WriteLine($" ({Pct(compressedLength,originalLength)}) match {matches}, success {successes}, errors {errors}, except {exceptions}, com,dec kB/s {compressedKbs}:{decompressedKbs}, total bytes {totalBytes}, total ratio {Pct(totalCompressedBytes,totalBytes)}");
 
     string Pct(long num, long den) => den == 0 ? "0%" : $"{100 * num / den}%";
 }

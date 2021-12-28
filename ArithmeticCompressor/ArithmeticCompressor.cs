@@ -79,6 +79,7 @@ SLOWER
  * DONE: 14. Allow more complex compression: arbitrary symbol count, backing to user place (so in mem, or to file for streaming, etc...)
  * DONE: 15. Clean comments, fix example code
  * 16. Add a order 1 (and maybe 2?) model to demonstrate
+ * 17. Review "Arithmetic Coding revealed, A guided tour from theory to praxis", Bodden, Clasen, Kneis, 2007, http://www.sable.mcgill.ca/~ebodde/pubs/sable-tr-2007-5.pdf
  * */
 
 namespace Lomont.Compression.Arithmetic;
