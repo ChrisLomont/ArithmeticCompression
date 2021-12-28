@@ -89,20 +89,20 @@ namespace Lomont.Compression.Arithmetic;
 /// </summary>
 public class Compressor
 {
-    #region Simple Interface
-    /// <summary>
-    /// Compress a byte sequence into a compressed byte list
+	#region Simple Interface
+	/// <summary>
+	/// Compress a byte sequence into a compressed byte list
 	/// Provides simple in memory compression
-    /// </summary>
-    /// <param name="data">The byte data to compress</param>
-    /// <returns>The compressed byte array</returns>
-    public static List<byte> CompressBytes(IEnumerable<byte> data)
+	/// </summary>
+	/// <param name="data">The byte data to compress</param>
+	/// <returns>The compressed byte array</returns>
+	public static List<byte> CompressBytes(IEnumerable<byte> data)
 	{
 		var compressor = new Compressor();
 		foreach (byte b in data)
 			compressor.CompressSymbol(b);
-        return (compressor.CompressFinish() is BitWriter m) ? m.Data : new();
-    }
+		return (compressor.CompressFinish() is BitWriter m) ? m.Data : new();
+	}
 	#endregion
 
 	#region Interface
@@ -118,10 +118,10 @@ public class Compressor
 		int symbolCount = 256,
 		IModel? model = null
 		)
-    {
-        this.model = model ?? new FastModel((ulong)symbolCount);
-        this.writer = writer ?? new BitWriter();
-    }
+	{
+		this.model = model ?? new FastModel((ulong)symbolCount);
+		this.writer = writer ?? new BitWriter();
+	}
 
 	/// <summary>
 	/// compress a symbol into the stream
@@ -151,29 +151,29 @@ public class Compressor
 	#region Implementation
 
 	const int BitLength = 62;  // number of bits used - todo - analyze this and make optimal?
-	const ulong MaxRange = 1UL<<BitLength; // highest bit used, range is [0,1] = [0,maxRange]
-	const ulong HalfRange = MaxRange>>1;     // half of the range [0,1)
-	const ulong QuarterRange = HalfRange>>1;      //  1/4 of the range [0,1)
-	const ulong ThreeQuarterRange =3*QuarterRange;    //  3/4 of the range [0,1)
+	const ulong MaxRange = 1UL << BitLength; // highest bit used, range is [0,1] = [0,maxRange]
+	const ulong HalfRange = MaxRange >> 1;     // half of the range [0,1)
+	const ulong QuarterRange = HalfRange >> 1;      //  1/4 of the range [0,1)
+	const ulong ThreeQuarterRange = 3 * QuarterRange;    //  3/4 of the range [0,1)
 
 	// leave highest bits open to prevent overflow
 	ulong rangeHigh = HalfRange + HalfRange - 1; // the high value of the current range [rangeLow,rangeHigh)
-	ulong rangeLow = 0;  // the low value of the current range [rangeLow,rangeHigh)
+	ulong rangeLow;  // the low value of the current range [rangeLow,rangeHigh)
 
 	/// <summary>
 	/// track how many underflows are unaccounted for	
 	/// </summary>
-	long underflow = 0;
+	long underflow;
 
 	/// <summary>
 	/// The probability model
 	/// </summary>
 	readonly IModel model;
 
-    /// <summary>
-    /// This member allows writing a bit at a time
-    /// </summary>
-    readonly IBitWriter writer;
+	/// <summary>
+	/// This member allows writing a bit at a time
+	/// </summary>
+	readonly IBitWriter writer;
 
 	/// <summary>
 	/// Encode a single symbol, updating internals
@@ -187,7 +187,7 @@ public class Compressor
 		{
 			Debug.Assert(rangeLow < rangeHigh);
 			ulong range = rangeHigh - rangeLow + 1; // +1 for open interval
-            model.GetRangeFromSymbol(symbol, out ulong left, out ulong right);
+			model.GetRangeFromSymbol(symbol, out ulong left, out ulong right);
 
 			ulong step = range / model.Total;
 			Debug.Assert(step > 0);
@@ -224,7 +224,7 @@ public class Compressor
 			// todo - is high - low > half here? if so, assert it
 			Debug.Assert(rangeHigh - rangeLow >= QuarterRange);
 		}
-	} 
+	}
 
 	/// <summary>
 	/// Flush final data out for encoding.
@@ -245,26 +245,27 @@ public class Compressor
 		else // low < half < quarter3 <= high
 		{
 			writer.Write(1); // low end of range, decoder adds 0s automatically on decode
+			writer.Write(0); // we'll write this just in case decoder doesn't add 0's properly..
 		}
 		writer.Flush();
 	}
 
-	#endregion 
-} 
+	#endregion
+}
 
 /// <summary>
 /// Class to perform arithmetic decompression
 /// </summary>
 public class Decompressor
 {
-    #region Simple interface
-    /// <summary>
-    /// Decompress a compressed byte sequence into a decompressed byte list
-    /// Provides simple in memory decompression
-    /// </summary>
-    /// <param name="data">The byte data to decompress</param>
-    /// <returns>The decompressed byte data</returns>
-    public static List<byte> DecompressBytes(IEnumerable<byte> data)
+	#region Simple interface
+	/// <summary>
+	/// Decompress a compressed byte sequence into a decompressed byte list
+	/// Provides simple in memory decompression
+	/// </summary>
+	/// <param name="data">The byte data to decompress</param>
+	/// <returns>The decompressed byte data</returns>
+	public static List<byte> DecompressBytes(IEnumerable<byte> data)
 	{
 		var decompressor = new Decompressor(data);
 		var output = new List<byte>();
@@ -290,7 +291,7 @@ public class Decompressor
 		IEnumerable<byte> data,
 		int symbolCount = 256,
 		IModel? model = null
-		) : this(new BitReader(data),symbolCount, model)
+		) : this(new BitReader(data), symbolCount, model)
 	{
 	}
 
@@ -342,13 +343,13 @@ public class Decompressor
 
 	// leave highest bits open to prevent overflow
 	ulong rangeHigh = HalfRange + HalfRange - 1; // the high value of the current range [rangeLow,rangeHigh)
-	ulong rangeLow = 0;  // the low value of the current range [rangeLow,rangeHigh)
+	ulong rangeLow;  // the low value of the current range [rangeLow,rangeHigh)
 
 	/// <summary>
 	/// The current value of the the decoding state
 	/// This is in [rangeLow, rangeHigh]
 	/// </summary>
-	ulong currentDecodeValue = 0;
+	ulong currentDecodeValue;
 
 	/// <summary>
 	/// The probability model
@@ -380,7 +381,7 @@ public class Decompressor
 			Debug.Assert(currentDecodeValue >= rangeLow);
 			Debug.Assert(rangeHigh >= currentDecodeValue);
 			ulong value = (currentDecodeValue - rangeLow) / step; // the interval location to lookup
-            ulong symbol = model.GetSymbolAndRange(value, out ulong left, out ulong right);
+			ulong symbol = model.GetSymbolAndRange(value, out ulong left, out ulong right);
 			rangeHigh = rangeLow + step * right - 1; // -1 for open interval
 			rangeLow += step * left;
 
@@ -410,7 +411,7 @@ public class Decompressor
 			}
 			return symbol;    // todo - can do this earlier to avoid final looping?
 		}
-	} 
+	}
 
 	#endregion
 }
@@ -473,7 +474,7 @@ public class SimpleModel : IModel
 	/// </summary>
 	public ulong EndOfFileSymbol { get; }
 
-    /// <summary>
+	/// <summary>
 	/// The total number of symbols seen
 	/// </summary>
 	public ulong Total { get; set; }
@@ -559,16 +560,16 @@ public class SimpleModel : IModel
 			return (ulong)(sum);
 		}
 	}
-    #endregion
+	#endregion
 
-    #region Implementation
-    /// <summary>
-    /// cumulative counts for each symbol
-    /// entry j is the count of all symbol frequencies up to (but not including) symbol j
-    /// </summary>
-    readonly ulong[] cumulativeCount;
+	#region Implementation
+	/// <summary>
+	/// cumulative counts for each symbol
+	/// entry j is the count of all symbol frequencies up to (but not including) symbol j
+	/// </summary>
+	readonly ulong[] cumulativeCount;
 
-    #endregion
+	#endregion
 
 } // SimpleModel
 
@@ -585,7 +586,7 @@ public class FastModel : IModel
 	/// </summary>
 	public ulong EndOfFileSymbol { get; }
 
-    /// <summary>
+	/// <summary>
 	/// The total number of symbols seen
 	/// </summary>
 	public ulong Total { get; set; }
@@ -598,7 +599,7 @@ public class FastModel : IModel
 	{
 		EndOfFileSymbol = size;
 		tree = new ulong[EndOfFileSymbol + 2]; // todo - this causes a slight increase over EOF+1 symbols - rethink?
-									// initialize counts to make distinct
+											   // initialize counts to make distinct
 		for (int i = 0; i < tree.Length - 1; ++i)
 			AddSymbol((ulong)i);
 	}
@@ -623,10 +624,10 @@ public class FastModel : IModel
 	/// <param name="high">The high end of the range</param>
 	public void GetRangeFromSymbol(ulong symbol, out ulong low, out ulong high)
 	{ // this uses interesting property of this tree:
-		// the parent of the higher index node of two consecutive entries will
-		// appear as an ancestor of the lower index node. This allows computing 
-		// the difference at that shared parent to get the range, then walking
-		// back on the lower index to get the lower bound.
+	  // the parent of the higher index node of two consecutive entries will
+	  // appear as an ancestor of the lower index node. This allows computing 
+	  // the difference at that shared parent to get the range, then walking
+	  // back on the lower index to get the lower bound.
 
 		ulong diff = tree[symbol];
 		long b = (long)(symbol);
@@ -723,20 +724,18 @@ public class FastModel : IModel
 				sum += tree[b];
 			return sum;
 		}
-		else
-		{
-			return Query(0, b) - Query(0, a - 1);
-		}
+
+		return Query(0, b) - Query(0, a - 1);
 	}
 
-    /// <summary>
-    /// Cumulative counts for each symbol stored in Fenwick tree.
-    /// Entry i contains sum of elements i&(i+1), i&(i+2),...,i
-    /// See above for more details on how stored.
-    /// </summary>
-    readonly ulong[] tree;
+	/// <summary>
+	/// Cumulative counts for each symbol stored in Fenwick tree.
+	/// Entry i contains sum of elements i&(i+1), i&(i+2),...,i
+	/// See above for more details on how stored.
+	/// </summary>
+	readonly ulong[] tree;
 
-    #endregion
+	#endregion
 } // FastModel
 #endregion
 
@@ -795,6 +794,8 @@ public class BitWriter : IBitWriter
 			Write(0);
 	}
 
+	public long BitsUsed => encodeData.Count + bitPos;
+
 	/// <summary>
 	/// Obtain the internal data 
 	/// </summary>
@@ -802,9 +803,9 @@ public class BitWriter : IBitWriter
 	#endregion
 
 	#region Implementation
-	int bitPos = 0;        // bits used in current byte
+	int bitPos;        // bits used in current byte
 	byte datum;            // current byte being created
-    readonly List<byte> encodeData; // data created
+	readonly List<byte> encodeData; // data created
 	#endregion
 } // BitWriter
 
@@ -854,10 +855,10 @@ public class BitReader : IBitReader
 	#region Implementation
 	byte datum;                   // current byte of data
 	int bitPos;                   // the number of bits used from datum
-    readonly IEnumerator<byte> decodeData; // points to data being decoded
+	readonly IEnumerator<byte> decodeData; // points to data being decoded
 	#endregion
 }
 
 #endregion
-	
+
 // end of file
